@@ -1,0 +1,31 @@
+name: Build JNMusic
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm install
+        working-directory: ./
+      - run: npm install
+        working-directory: ./src-tauri
+      - run: cargo build --release
+        working-directory: ./src-tauri
+      - run: npx tauri build --bundles ${{ runner.os == 'macOS' && 'dmg' || 'msi' }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jnmusic-${{ runner.os }}
+          path: src-tauri/target/release/bundle/
